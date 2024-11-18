@@ -108,6 +108,18 @@ CSVConfig const kTestDif3 = CreateCsvConfig("dif_tables/TestDif3.csv", ',', true
 CSVConfig const kTestDif4 = CreateCsvConfig("dif_tables/TestDif4.csv", ',', true);
 CSVConfig const kTestDif5 = CreateCsvConfig("dif_tables/TestDif5.csv", ',', true);
 CSVConfig const kSimpleTypes1 = CreateCsvConfig("SimpleTypes1.csv", ',', true);
+CSVConfig const kTestDynamicFDAfterAll =
+        CreateCsvConfig("dynamic_fd/TestDynamicAfterAll.csv", ',', true);
+CSVConfig const kTestDynamicFDAfterDelete =
+        CreateCsvConfig("dynamic_fd/TestDynamicAfterDelete.csv", ',', true);
+CSVConfig const kTestDynamicFDAfterInsert =
+        CreateCsvConfig("dynamic_fd/TestDynamicAfterInsert.csv", ',', true);
+CSVConfig const kTestDynamicFDAfterInsertAndDelete =
+        CreateCsvConfig("dynamic_fd/TestDynamicAfterInsertAndDelete.csv", ',', true);
+CSVConfig const kTestDynamicFDAfterInsertAndUpdate =
+        CreateCsvConfig("dynamic_fd/TestDynamicAfterInsertAndUpdate.csv", ',', true);
+CSVConfig const kTestDynamicFDAfterUpdateAndDelete =
+        CreateCsvConfig("dynamic_fd/TestDynamicAfterUpdateAndDelete.csv", ',', true);
 CSVConfig const kTestDynamicFDInit = CreateCsvConfig("dynamic_fd/TestDynamicInit.csv", ',', true);
 CSVConfig const kTestDynamicFDEmpty = CreateCsvConfig("dynamic_fd/TestDynamicEmpty.csv", ',', true);
 CSVConfig const kTestDynamicFDInsert =
