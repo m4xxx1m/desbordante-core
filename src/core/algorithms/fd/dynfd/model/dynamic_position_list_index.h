@@ -6,6 +6,7 @@
 #include <table/position_list_index.h>
 #include <unordered_map>
 #include <vector>
+#include <ranges>
 
 namespace algos::dynfd {
 class DynamicPositionListIndex {
@@ -26,6 +27,8 @@ public:
         size_t Back() const;
 
         bool Empty() const;
+
+        size_t Size() const;
 
         // Iterator support
         // NOLINTBEGIN(*-identifier-naming)
@@ -103,6 +106,10 @@ public:
 
     auto end() const {
         return clusters_.end();
+    }
+
+    [[nodiscard]] auto GetClustersToCheck() const {
+        return clusters_ | std::views::filter([](Cluster const& cluster) { return cluster.Size() > 1; });
     }
 
     // NOLINTEND(*-identifier-naming)
