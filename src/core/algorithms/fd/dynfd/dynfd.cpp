@@ -1,5 +1,7 @@
 #include "dynfd.h"
 
+#include <chrono>
+#include <iostream>
 #include <easylogging++.h>
 
 #include "algo_factory.h"
@@ -75,7 +77,14 @@ unsigned long long DynFD::ExecuteInternal() {
     }
 
     if (is_non_fd_validation_needed) {
+        auto start = std::chrono::steady_clock::now();
         validator_->ValidateNonFds();
+        auto end = std::chrono::steady_clock::now();
+        std::cout
+            << "ValidateNonFds duration: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+            << " ms"
+            << std::endl;
     }
 
     size_t const first_insert_batch_id = relation_->GetNextRecordId();
@@ -87,7 +96,14 @@ unsigned long long DynFD::ExecuteInternal() {
     }
 
     if (is_fd_validation_needed) {
+        auto start = std::chrono::steady_clock::now();
         validator_->ValidateFds(first_insert_batch_id);
+        auto end = std::chrono::steady_clock::now();
+        std::cout
+            << "ValidateFds duration: "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+            << " ms"
+            << std::endl;
     }
 
     SetProgress(kTotalProgressPercent);
