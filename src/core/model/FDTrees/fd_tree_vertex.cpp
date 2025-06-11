@@ -104,7 +104,11 @@ void FDTreeVertex::RemoveSpecialsRecursive(boost::dynamic_bitset<> const& lhs,
                                            size_t rhs, size_t cur_bit,
                                            bool is_specialized) {
     // TODO: optimize checking via counting bits
-    size_t next_lhs_bit = lhs.test(cur_bit) ? cur_bit : lhs.find_next(cur_bit);
+    size_t next_lhs_bit;
+    if (cur_bit < lhs.size())
+        next_lhs_bit = lhs.test(cur_bit) ? cur_bit : lhs.find_next(cur_bit);
+    else
+        next_lhs_bit = boost::dynamic_bitset<>::npos;
 
     if (is_specialized && next_lhs_bit == boost::dynamic_bitset<>::npos && IsFd(rhs)) {
         RemoveFd(rhs);
