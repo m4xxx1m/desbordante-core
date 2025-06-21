@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <memory>
+#include <vector>
 
 #include "compressed_column_data.h"
 #include "fd/hycommon/preprocessor.h"
@@ -13,11 +14,18 @@
 
 namespace algos::dynfd {
 
+using CompressedRecord = std::vector<int>;
+using CompressedRecords = std::vector<CompressedRecord>;
+using CompressedRecordsPtr = std::shared_ptr<CompressedRecords>;
+
 class DynamicRelationData : public AbstractRelationData<CompressedColumnData> {
+    using ValueDictionary = std::vector<std::unordered_map<std::string, int>>;
+
     std::unordered_set<size_t> stored_row_ids_;
-    std::unordered_map<std::string, int> value_dictionary_;
+    ValueDictionary value_dictionary_;
     int next_value_id_;
     size_t next_record_id_;
+    CompressedRecordsPtr compressed_records_;
 
 private:
     [[nodiscard]] size_t GetNumRows() const final;
@@ -26,8 +34,8 @@ public:
     explicit DynamicRelationData(std::unique_ptr<RelationalSchema> schema,
                                  std::vector<ColumnType> column_data,
                                  std::unordered_set<size_t> stored_row_ids,
-                                 std::unordered_map<std::string, int> value_dictionary,
-                                 int next_value_id, int next_record_id);
+                                 ValueDictionary value_dictionary, int next_value_id,
+                                 size_t next_record_id, CompressedRecords compressed_records);
 
     size_t GetNextRecordId() const;
 
@@ -44,6 +52,10 @@ public:
     [[nodiscard]] bool IsRowIndexValid(size_t row_id) const;
 
     bool Empty() const;
+
+    CompressedRecords const& GetCompressedRecords() const;
+
+    CompressedRecordsPtr GetCompressedRecordsPtr() const;
 };
 
 }  // namespace algos::dynfd

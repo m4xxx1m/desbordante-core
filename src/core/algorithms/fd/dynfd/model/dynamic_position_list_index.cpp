@@ -11,17 +11,17 @@ DynamicPositionListIndex::Cluster::Cluster(std::vector<size_t> unsorted_records)
     for (std::vector<size_t> sorted_records = std::move(unsorted_records);
          size_t record_id : sorted_records) {
         records_.push_back(record_id);
-        position_by_record_id_[record_id] = std::prev(records_.end());
+        position_by_record_id_[record_id] = records_.size() - 1;
     }
 }
 
 void DynamicPositionListIndex::Cluster::PushBack(size_t const record_id) {
     records_.push_back(record_id);
-    position_by_record_id_[record_id] = std::prev(records_.end());
+    position_by_record_id_[record_id] = records_.size() - 1;
 }
 
 void DynamicPositionListIndex::Cluster::Erase(size_t const record_id) {
-    records_.erase(position_by_record_id_[record_id]);
+    records_.erase(records_.begin() + position_by_record_id_[record_id]);
 }
 
 size_t DynamicPositionListIndex::Cluster::Back() const {
@@ -31,6 +31,10 @@ size_t DynamicPositionListIndex::Cluster::Back() const {
 
 bool DynamicPositionListIndex::Cluster::Empty() const {
     return records_.empty();
+}
+
+size_t DynamicPositionListIndex::Cluster::Size() const {
+    return records_.size();
 }
 
 DynamicPositionListIndex::DynamicPositionListIndex(
@@ -96,7 +100,8 @@ unsigned int DynamicPositionListIndex::GetSize() const {
     return size_;
 }
 
-DynamicPositionListIndex::Cluster const &DynamicPositionListIndex::GetCluster(int cluster_id) {
+DynamicPositionListIndex::Cluster const &DynamicPositionListIndex::GetCluster(
+        int cluster_id) const {
     auto it = clusters_.begin();
     std::advance(it, cluster_id);
     // ReSharper disable once CppDFALocalValueEscapesFunction

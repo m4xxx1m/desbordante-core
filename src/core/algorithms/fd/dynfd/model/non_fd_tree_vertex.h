@@ -90,39 +90,23 @@ private:
     void GetLevelRecursive(unsigned target_level, unsigned cur_level, boost::dynamic_bitset<> lhs,
                            std::vector<LhsPair>& vertices);
 
-    void GetNonFdAndGeneralsRecursive(boost::dynamic_bitset<> const& lhs,
-                                      boost::dynamic_bitset<> cur_lhs, size_t rhs, size_t cur_bit,
-                                      std::vector<boost::dynamic_bitset<>>& result) const;
-
-    void GetGeneralsRecursive(boost::dynamic_bitset<> const& lhs, boost::dynamic_bitset<>& cur_lhs,
-                              size_t rhs, size_t cur_bit,
-                              std::vector<boost::dynamic_bitset<>>& result) const;
-
-    void GetSpecialsRecursive(boost::dynamic_bitset<> const& lhs, boost::dynamic_bitset<>& cur_lhs,
-                              size_t rhs, size_t cur_bit,
-                              std::vector<boost::dynamic_bitset<>>& result) const;
-
     void GetNonFdAndSpecialsRecursive(boost::dynamic_bitset<> const& lhs,
                                       boost::dynamic_bitset<>& cur_lhs, size_t rhs, size_t cur_bit,
                                       std::vector<boost::dynamic_bitset<>>& result) const;
 
-    bool ContainsNonFdOrGeneralRecursive(boost::dynamic_bitset<> const& lhs, size_t rhs,
-                                         size_t cur_bit) const;
-
     bool ContainsNonFdOrSpecialRecursive(boost::dynamic_bitset<> const& lhs, size_t rhs,
-                                         size_t next_after_last_lhs_set_bit, size_t cur_bit) const;
+                                         size_t cur_bit) const;
 
     bool RemoveRecursive(boost::dynamic_bitset<> const& lhs, size_t rhs, size_t current_lhs_attr);
 
-    void RemoveGeneralsRecursive(boost::dynamic_bitset<> const& lhs,
-                                 boost::dynamic_bitset<> cur_lhs, size_t rhs, size_t cur_bit);
-
-    void RemoveSpecialsRecursive(boost::dynamic_bitset<> const& lhs,
-                                 boost::dynamic_bitset<> cur_lhs, size_t rhs, size_t cur_bit);
+    void RemoveGeneralsRecursive(boost::dynamic_bitset<> const& lhs, size_t rhs, size_t cur_bit,
+                                 bool is_generalized);
 
     bool IsLastNodeOf(size_t rhs) const noexcept;
 
     void FillNonFDs(std::vector<RawFD>& fds, boost::dynamic_bitset<>& lhs) const;
+
+    bool CheckChildren();
 
 public:
     explicit NonFDTreeVertex(size_t numAttributes) noexcept
