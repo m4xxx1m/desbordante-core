@@ -63,22 +63,20 @@ void NonFDTreeVertex::GetNonFdAndSpecialsRecursive(
         return;
     }
 
-    auto limit = next_lhs_bit == boost::dynamic_bitset<>::npos
-                ? num_attributes_ - 1
-                : next_lhs_bit;
+    auto limit = next_lhs_bit == boost::dynamic_bitset<>::npos ? num_attributes_ - 1 : next_lhs_bit;
 
     for (; cur_bit <= limit; ++cur_bit) {
         if (ContainsChildAt(cur_bit) && children_[cur_bit]->IsAttribute(rhs)) {
             cur_lhs.set(cur_bit);
-            children_[cur_bit]->GetNonFdAndSpecialsRecursive(lhs, cur_lhs, rhs, cur_bit + 1, result);
+            children_[cur_bit]->GetNonFdAndSpecialsRecursive(lhs, cur_lhs, rhs, cur_bit + 1,
+                                                             result);
             cur_lhs.reset(cur_bit);
         }
     }
 }
 
 bool NonFDTreeVertex::ContainsNonFdOrSpecialRecursive(boost::dynamic_bitset<> const& lhs,
-                                                      size_t rhs,
-                                                      size_t cur_bit) const {
+                                                      size_t rhs, size_t cur_bit) const {
     size_t next_lhs_bit;
     if (cur_bit < lhs.size())
         next_lhs_bit = lhs.test(cur_bit) ? cur_bit : lhs.find_next(cur_bit);
@@ -93,9 +91,7 @@ bool NonFDTreeVertex::ContainsNonFdOrSpecialRecursive(boost::dynamic_bitset<> co
         return false;
     }
 
-    auto limit = next_lhs_bit == boost::dynamic_bitset<>::npos
-                ? num_attributes_ - 1
-                : next_lhs_bit;
+    auto limit = next_lhs_bit == boost::dynamic_bitset<>::npos ? num_attributes_ - 1 : next_lhs_bit;
 
     for (; cur_bit <= limit; ++cur_bit) {
         if (ContainsChildAt(cur_bit) && children_[cur_bit]->IsAttribute(rhs) &&
@@ -135,8 +131,8 @@ bool NonFDTreeVertex::RemoveRecursive(boost::dynamic_bitset<> const& lhs, size_t
     return false;
 }
 
-void NonFDTreeVertex::RemoveGeneralsRecursive(boost::dynamic_bitset<> const& lhs,
-                                              size_t const rhs, size_t cur_bit, bool is_generalized) {
+void NonFDTreeVertex::RemoveGeneralsRecursive(boost::dynamic_bitset<> const& lhs, size_t const rhs,
+                                              size_t cur_bit, bool is_generalized) {
     // TODO: optimize checking via counting bits
     if (IsNonFd(rhs) && is_generalized) {
         RemoveNonFd(rhs);
