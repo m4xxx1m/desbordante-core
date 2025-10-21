@@ -49,7 +49,7 @@ unsigned long long HyFD::ExecuteInternal() {
     while (true) {
         auto non_fds = sampler.GetNonFDs(comparison_suggestions);
 
-        inductor.UpdateFdTree(std::move(non_fds));
+        inductor.UpdateFdTree(non_fds);
 
         comparison_suggestions = validator.ValidateAndExtendCandidates();
 
