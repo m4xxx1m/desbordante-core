@@ -70,31 +70,34 @@ def mine_tke(sequence, episodes_num, window_size, threads=1):
 banner("Discovering the Top-K Frequent Episodes (TKE)")
 
 printlns(
-    "examples/basic/mining_afem.py's AFEM requires a minsup threshold: too "
-    "low a value produces an unmanageably large result and a slower "
-    "search, too high a value omits relevant episodes, and there is no way "
-    "to determine an appropriate value without already knowing the data. "
-    "TKE [1] replaces minsup with a parameter k: instead of a support "
-    "threshold, it returns the k most frequent episodes."
+    "The AFEM example (examples/basic/mining_fem/afem.py) showed that AFEM "
+    "requires a minsup threshold: too low a value produces an "
+    "unmanageably large result and a slower search, too high a value omits "
+    "relevant episodes, and there is no way to determine an appropriate "
+    "value without already knowing the data. TKE finds the k most frequent "
+    "episodes instead, without requiring minsup: it takes the number k of "
+    "episodes to return directly."
 )
-
-print(f"{YELLOW}>>> Definition 1 (Episode and support).{RESET}")
-prints(
-    "As defined in examples/basic/mining_afem.py: an episode is an ordered "
-    "list of event sets X1 -> X2 -> ... -> Xp; its support is the number of "
-    "distinct start points among its occurrences shorter than window_size "
-    "(the head frequency measure)."
-)
+prints("This example follows:")
 print()
-
-print(f"{YELLOW}>>> Definition 2 (Top-k frequent episode mining) [1].{RESET}")
-prints(
-    "Given k and window_size, top-k frequent episode mining finds a set T "
-    "of k episodes whose support is at least as high as that of any "
-    "episode not in T. If several episodes are tied on the cutoff support "
-    "value, more than one such set exists; TKE breaks ties by discovery "
-    "order (see the note on threads below)."
+print("    P. Fournier-Viger, Y. Yang, P. Yang, J. C.-W. Lin, U. Yun. TKE:")
+print("    Mining Top-K Frequent Episodes. IEA/AIE 2020, pp. 832-845.")
+print()
+printlns(
+    "Read examples/basic/mining_fem/afem.py first if you have not already: "
+    "it introduces the terms this example builds on."
 )
+
+print(f"{CYAN}Key definitions{RESET}")
+print("-" * 80)
+
+print("  * top-k frequent episode mining   given a complex event sequence, a")
+print("                             window_size and an integer k > 0, find a set T of k")
+print("                             episodes such that their support is greater than or")
+print("                             equal to that of any episode not in T. If several")
+print("                             episodes are tied on the cutoff support value, more")
+print("                             than one such set exists; TKE breaks ties by")
+print("                             discovery order (see the note on threads below).")
 print()
 
 print(f"{YELLOW}>>> A note on determinism.{RESET}")
@@ -117,7 +120,7 @@ print(f"{CYAN}Dataset{RESET}")
 print("-" * 80)
 
 printlns(
-    "The same event sequence used in examples/basic/mining_afem.py."
+    "The same event sequence used in examples/basic/mining_fem/afem.py."
 )
 
 rows = read_sequence_file(DATASET)
@@ -127,13 +130,16 @@ print(f"{CYAN}Algorithm parameters{RESET}")
 print("-" * 80)
 
 print("  * sequence     path to a sequence file, or an in-memory Python iterable")
-print("                 of (event set, timestamp) pairs.")
+print("                 of (event set, timestamp) pairs - see AFEM example's")
+print("                 Scenario 3 (examples/basic/mining_fem/afem.py) for how")
+print("                 to build one.")
 print()
 print("  * episodes_num the number k of top episodes to return. Positive integer,")
 print("                 default 10. This replaces minsup entirely.")
 print()
 print("  * window_size  same meaning as in AFEM/MaxFEM: an occurrence longer than")
-print("                 this is not counted. Positive integer, default 5.")
+print("                 this (in timestamp units) is not counted. Positive integer,")
+print("                 default 5.")
 print()
 print("  * threads      number of worker threads. 0 uses all available CPU cores;")
 print("                 see the determinism note above for why this example fixes")
@@ -145,26 +151,24 @@ print()
 print(f"{CYAN}Example{RESET}")
 print("-" * 80)
 
+printlns(
+    "Let's search the sequence above for its top-3 most frequent episodes."
+)
+
 episodes_k3 = mine_tke(DATASET, episodes_num=3, window_size=2)
 print("  top-3 episodes (window_size=2):")
 print_episodes(episodes_k3)
 
 printlns(
-    "examples/basic/mining_afem.py's Scenario 2 obtains the same three "
-    "episodes by setting minsup=3; here no support threshold is specified. "
-    "Event 1 has the highest support, event 1 followed by itself has "
-    "nearly as high a support, and event 2 has the third-highest support."
+    "examples/basic/mining_fem/afem.py's Scenario 2 obtains the "
+    "same three episodes by setting minsup=3; here no support threshold is "
+    "specified."
 )
 
 
 banner("See also")
 
 print("Related primitives in Desbordante:")
-print("  * All frequent episode mining     -  examples/basic/mining_afem.py")
-print("  * Maximal frequent episode mining -  examples/basic/mining_maxfem.py")
-print()
-
-print("References:")
-print("  [1] P. Fournier-Viger, Y. Yang, P. Yang, J. C.-W. Lin, U. Yun. TKE:")
-print("      Mining Top-K Frequent Episodes. IEA/AIE 2020, pp. 832-845.")
+print("  * All frequent episode mining     -  examples/basic/mining_fem/afem.py")
+print("  * Maximal frequent episode mining -  examples/basic/mining_fem/maxfem.py")
 print()
