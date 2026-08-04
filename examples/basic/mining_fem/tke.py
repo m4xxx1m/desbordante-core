@@ -91,8 +91,8 @@ printlns(
 print(f"{CYAN}Key definitions{RESET}")
 print("-" * 80)
 
-print("  * top-k frequent episode mining   given a complex event sequence, a")
-print("                             window_size and an integer k > 0, find a set T of k")
+print("  * top-k frequent           given a complex event sequence, a")
+print("    episode mining           window_size and an integer k > 0, find a set T of k")
 print("                             episodes such that their support is greater than or")
 print("                             equal to that of any episode not in T. If several")
 print("                             episodes are tied on the cutoff support value, more")

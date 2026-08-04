@@ -92,7 +92,7 @@ printlns(
     "frequent episode - the maximal frequent episodes - of which there are "
     "typically far fewer."
 )
-prints("This example follows:")
+prints("MaxFEM algorithm was introduced in:")
 print()
 print("    P. Fournier-Viger, M. S. Nawaz, Y. He, Y. Wu, F. Nouioua, U. Yun.")
 print("    MaxFEM: Mining Maximal Frequent Episodes in Complex Event")
@@ -111,8 +111,8 @@ print("                             an episode X1 -> ... -> Xp (written Y ⊑ X)
 print("                             only if Y1 ⊆ X_k1, Y2 ⊆ X_k2, ..., Yi ⊆ X_ki for")
 print("                             some integers 1 <= k1 < k2 < ... < ki <= p.")
 print()
-print("  * maximal frequent episode mining   given a complex event sequence, minsup > 0")
-print("                             and window_size > 0, enumerate all frequent episodes")
+print("  * maximal frequent         given a complex event sequence, minsup > 0")
+print("    episode mining           and window_size > 0, enumerate all frequent episodes")
 print("                             that are not strictly included in another frequent")
 print("                             episode.")
 print()
@@ -152,11 +152,10 @@ print(f"  MaxFEM found {len(maxfem_episodes)} maximal frequent episode(s):")
 print_episodes(maxfem_episodes)
 
 printlns(
-    "Five of AFEM's seven episodes - event 1, event 1 repeated, the "
-    "parallel pair {1, 2}, and two chains built on event 1 - are "
-    "sub-episodes of the chain 1 -> {1, 2}. MaxFEM keeps only that chain "
-    "and event 3, which is not contained in any other frequent episode. "
-    "These two episodes are the maximal front for minsup=2."
+    "Five of AFEM's seven episodes - #1, #2, #3, #4, #7 - are sub-episodes "
+    "of the chain 1 -> {1, 2}. MaxFEM keeps only that chain and event 3, "
+    "which is not contained in any other frequent episode. These two "
+    "episodes are the maximal front for minsup=2."
 )
 
 
@@ -191,6 +190,6 @@ printlns(
 banner("See also")
 
 print("Related primitives in Desbordante:")
-print("  * All frequent episode mining -  examples/basic/mining_fem/afem.py")
+print("  * All frequent episode mining   -  examples/basic/mining_fem/afem.py")
 print("  * Top-k frequent episode mining -  examples/basic/mining_fem/tke.py")
 print()
