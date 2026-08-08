@@ -1,11 +1,12 @@
 #include "core/algorithms/fem/tke/composite_topk_miner.h"
 
 #include <atomic>
+#include <cassert>
 #include <memory>
+#include <semaphore>
 #include <thread>
 #include <vector>
 
-#include <boost/interprocess/sync/interprocess_semaphore.hpp>
 #include <boost/lockfree/queue.hpp>
 
 namespace algos::tke {
@@ -55,32 +56,31 @@ void CompositeTopKMiner::ExploreParallel(std::vector<ParallelEpisode> const& par
                                                            : initial_minsup};
     std::atomic<bool> terminate_flag{false};
     std::atomic<size_t> tasks_in_flight{0};
-    boost::interprocess::interprocess_semaphore tasks_sem{0};
+    std::counting_semaphore<> tasks_sem{0};
 
     auto worker_loop = [&]() {
         while (true) {
-            tasks_sem.wait();
-            if (terminate_flag.load(std::memory_order_relaxed)) break;
+            tasks_sem.acquire();
+            if (terminate_flag.load(std::memory_order_acquire)) break;
 
             Task task;
-            tasks.pop(task);
+            [[maybe_unused]] bool const task_popped = tasks.pop(task);
+            assert(task_popped);
 
             size_t const task_minsup = atomic_minsup.load(std::memory_order_relaxed);
-            if (task.parent->GetSupport() < task_minsup) {
-                delete task.parent;
-                tasks_in_flight.fetch_sub(1, std::memory_order_release);
-                continue;
-            }
+            if (task.parent->GetSupport() >= task_minsup) {
+                for (size_t i = 0; i < task.ext_count; ++i) {
+                    ParallelEpisode const& ext = parallel_episodes[i];
 
-            for (size_t i = 0; i < task.ext_count; ++i) {
-                ParallelEpisode const& ext = parallel_episodes[i];
-
-                size_t const cur_min = atomic_minsup.load(std::memory_order_relaxed);
-                std::optional<CompositeEpisode> child =
-                        task.parent->TryExtend(ext, cur_min, window_length_);
-                if (child && child->GetSupport() >= atomic_minsup.load(std::memory_order_relaxed)) {
-                    auto* result = new CompositeEpisode(std::move(*child));
-                    while (!processed.push(result)) {
+                    size_t const cur_min = atomic_minsup.load(std::memory_order_relaxed);
+                    std::optional<CompositeEpisode> child =
+                            task.parent->TryExtend(ext, cur_min, window_length_);
+                    if (child &&
+                        child->GetSupport() >= atomic_minsup.load(std::memory_order_relaxed)) {
+                        auto* result = new CompositeEpisode(std::move(*child));
+                        while (!processed.bounded_push(result)) {
+                            std::this_thread::yield();
+                        }
                     }
                 }
             }
@@ -97,13 +97,15 @@ void CompositeTopKMiner::ExploreParallel(std::vector<ParallelEpisode> const& par
     }
 
     size_t const tasks_threshold = threads_num_ * 4;
+    size_t current_minsup = atomic_minsup.load(std::memory_order_relaxed);
 
     while (true) {
         CompositeEpisode* ep_ptr = nullptr;
         while (processed.pop(ep_ptr)) {
             std::unique_ptr<CompositeEpisode> ep(ep_ptr);
             if (TryAdd(std::move(*ep), top_k, explore, initial_minsup)) {
-                atomic_minsup.store(top_k.top().GetSupport(), std::memory_order_relaxed);
+                current_minsup = top_k.top().GetSupport();
+                atomic_minsup.store(current_minsup, std::memory_order_relaxed);
             }
         }
 
@@ -112,11 +114,16 @@ void CompositeTopKMiner::ExploreParallel(std::vector<ParallelEpisode> const& par
             CompositeEpisode parent_ep = std::move(const_cast<CompositeEpisode&>(explore.top()));
             explore.pop();
 
-            size_t const minsup_now = atomic_minsup.load(std::memory_order_relaxed);
+            size_t const minsup_now = current_minsup;
             bool const stale = (top_k.size() == k_) ? parent_ep.GetSupport() <= minsup_now
                                                     : parent_ep.GetSupport() < minsup_now;
-            if (stale) continue;
+            if (stale) {
+                explore = Explore{};
+                break;
+            }
 
+            // ParallelTopKMiner returns episodes in descending support order, so every episode
+            // after the first one below minsup_now is also invalid for this extension.
             size_t valid_n = 0;
             while (valid_n < n && parallel_episodes[valid_n].GetSupport() >= minsup_now) {
                 ++valid_n;
@@ -124,13 +131,13 @@ void CompositeTopKMiner::ExploreParallel(std::vector<ParallelEpisode> const& par
             if (valid_n == 0) continue;
 
             auto* parent = new CompositeEpisode(std::move(parent_ep));
-            tasks_in_flight.fetch_add(1, std::memory_order_relaxed);
-            if (!tasks.push({parent, valid_n})) {
+            if (!tasks.bounded_push({parent, valid_n})) {
+                explore.push(std::move(*parent));
                 delete parent;
-                tasks_in_flight.fetch_sub(1, std::memory_order_release);
                 break;
             }
-            tasks_sem.post();
+            tasks_in_flight.fetch_add(1, std::memory_order_release);
+            tasks_sem.release();
         }
 
         if (explore.empty() && tasks_in_flight.load(std::memory_order_acquire) == 0) {
@@ -139,7 +146,8 @@ void CompositeTopKMiner::ExploreParallel(std::vector<ParallelEpisode> const& par
                 got_any = true;
                 std::unique_ptr<CompositeEpisode> ep(ep_ptr);
                 if (TryAdd(std::move(*ep), top_k, explore, initial_minsup)) {
-                    atomic_minsup.store(top_k.top().GetSupport(), std::memory_order_relaxed);
+                    current_minsup = top_k.top().GetSupport();
+                    atomic_minsup.store(current_minsup, std::memory_order_relaxed);
                 }
             }
             if (got_any) continue;
@@ -147,8 +155,8 @@ void CompositeTopKMiner::ExploreParallel(std::vector<ParallelEpisode> const& par
         }
     }
 
-    terminate_flag.store(true, std::memory_order_relaxed);
-    for (size_t i = 0; i < threads_num_; ++i) tasks_sem.post();
+    terminate_flag.store(true, std::memory_order_release);
+    for (size_t i = 0; i < threads_num_; ++i) tasks_sem.release();
     for (std::thread& t : workers) t.join();
 }
 

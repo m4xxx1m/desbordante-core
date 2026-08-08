@@ -38,7 +38,10 @@ void TKE::MakeExecuteOptsAvailable() {
     });
 }
 
-void TKE::ResetState() {}
+void TKE::ResetState() {
+    top_k_frequent_episodes_.clear();
+    reverse_mapping_.clear();
+}
 
 void TKE::ExecuteInternal() {
     LOG_DEBUG("Episodes num: {}. Window length: {}", episodes_num_, window_length_);
@@ -89,8 +92,6 @@ std::map<model::Event, size_t> TKE::GetEventsSupports() const {
 void TKE::RemoveInfrequentEvents(std::map<model::Event, size_t> const& events_supports,
                                  size_t event_minsup) {
     model::Event new_events_num = model::kStartEvent;
-    reverse_mapping_.clear();
-    reverse_mapping_.resize(new_events_num);
 
     std::unordered_map<model::Event, model::Event> mapping;
     for (auto const& [event, support] : events_supports) {

@@ -46,7 +46,10 @@ void AFEM::MakeExecuteOptsAvailable() {
     });
 }
 
-void AFEM::ResetState() {}
+void AFEM::ResetState() {
+    frequent_episodes_.clear();
+    reverse_mapping_.clear();
+}
 
 void AFEM::ExecuteInternal() {
     LOG_DEBUG("Min support: {}. Window length: {}", min_support_, window_length_);
@@ -61,7 +64,6 @@ void AFEM::ExecuteInternal() {
 void AFEM::RemoveInfrequentEvents() {
     std::map<model::Event, size_t> events_supports = GetEventsSupports();
     model::Event new_events_num = model::kStartEvent;
-    reverse_mapping_.resize(new_events_num);
 
     std::unordered_map<model::Event, model::Event> mapping;
     for (auto const& [event, support] : events_supports) {

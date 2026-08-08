@@ -384,7 +384,6 @@ desbordante_add_test(
     ${DESBORDANTE_PREFIX}::algos
     ${DESBORDANTE_PREFIX}::parser::sequence
     spdlog::spdlog_header_only
-    magic_enum::magic_enum
     gmock
     Boost::headers
 )
@@ -400,7 +399,6 @@ desbordante_add_test(
     ${DESBORDANTE_PREFIX}::algos
     ${DESBORDANTE_PREFIX}::parser::sequence
     spdlog::spdlog_header_only
-    magic_enum::magic_enum
     gmock
     Boost::headers
 )

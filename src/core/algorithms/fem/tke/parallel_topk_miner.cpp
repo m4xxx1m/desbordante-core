@@ -1,11 +1,12 @@
 #include "core/algorithms/fem/tke/parallel_topk_miner.h"
 
 #include <atomic>
+#include <cassert>
 #include <memory>
+#include <semaphore>
 #include <thread>
 #include <vector>
 
-#include <boost/interprocess/sync/interprocess_semaphore.hpp>
 #include <boost/lockfree/queue.hpp>
 
 namespace algos::tke {
@@ -53,30 +54,28 @@ void ParallelTopKMiner::ExploreParallel(TopK& top_k, Explore& explore) const {
     std::atomic<size_t> atomic_minsup{(top_k.size() == k_) ? top_k.top().GetSupport() : 1};
     std::atomic<bool> terminate_flag{false};
     std::atomic<size_t> tasks_in_flight{0};
-    boost::interprocess::interprocess_semaphore tasks_sem{0};
+    std::counting_semaphore<> tasks_sem{0};
 
     auto worker_loop = [&]() {
         while (true) {
-            tasks_sem.wait();
-            if (terminate_flag.load(std::memory_order_relaxed)) break;
+            tasks_sem.acquire();
+            if (terminate_flag.load(std::memory_order_acquire)) break;
 
             Task task;
-            tasks.pop(task);
+            [[maybe_unused]] bool const task_popped = tasks.pop(task);
+            assert(task_popped);
 
             size_t const task_minsup = atomic_minsup.load(std::memory_order_relaxed);
-            if (task.parent->GetSupport() < task_minsup) {
-                delete task.parent;
-                tasks_in_flight.fetch_sub(1, std::memory_order_release);
-                continue;
-            }
+            if (task.parent->GetSupport() >= task_minsup) {
+                for (model::Event event = task.start_event; event < events_num_; ++event) {
+                    ParallelEpisode child =
+                            task.parent->ParallelExtension(event, *events_loc_lists_[event]);
 
-            for (model::Event event = task.start_event; event < events_num_; ++event) {
-                ParallelEpisode child =
-                        task.parent->ParallelExtension(event, *events_loc_lists_[event]);
-
-                if (child.GetSupport() >= atomic_minsup.load(std::memory_order_relaxed)) {
-                    auto* result = new ParallelEpisode(std::move(child));
-                    while (!processed.push(result)) {
+                    if (child.GetSupport() >= atomic_minsup.load(std::memory_order_relaxed)) {
+                        auto* result = new ParallelEpisode(std::move(child));
+                        while (!processed.bounded_push(result)) {
+                            std::this_thread::yield();
+                        }
                     }
                 }
             }
@@ -93,13 +92,15 @@ void ParallelTopKMiner::ExploreParallel(TopK& top_k, Explore& explore) const {
     }
 
     size_t const tasks_threshold = threads_num_ * 4;
+    size_t current_minsup = atomic_minsup.load(std::memory_order_relaxed);
 
     while (true) {
         ParallelEpisode* ep_ptr = nullptr;
         while (processed.pop(ep_ptr)) {
             std::unique_ptr<ParallelEpisode> ep(ep_ptr);
             if (TryAdd(std::move(*ep), top_k, explore)) {
-                atomic_minsup.store(top_k.top().GetSupport(), std::memory_order_relaxed);
+                current_minsup = top_k.top().GetSupport();
+                atomic_minsup.store(current_minsup, std::memory_order_relaxed);
             }
         }
 
@@ -108,22 +109,25 @@ void ParallelTopKMiner::ExploreParallel(TopK& top_k, Explore& explore) const {
             ParallelEpisode parent_ep = std::move(const_cast<ParallelEpisode&>(explore.top()));
             explore.pop();
 
-            size_t const minsup_now = atomic_minsup.load(std::memory_order_relaxed);
+            size_t const minsup_now = current_minsup;
             bool const stale = (top_k.size() == k_) ? parent_ep.GetSupport() <= minsup_now
                                                     : parent_ep.GetSupport() < minsup_now;
-            if (stale) continue;
+            if (stale) {
+                explore = Explore{};
+                break;
+            }
 
             model::Event const start_event = parent_ep.GetLastEvent() + 1;
             if (start_event >= events_num_) continue;
 
             auto* parent = new ParallelEpisode(std::move(parent_ep));
-            tasks_in_flight.fetch_add(1, std::memory_order_relaxed);
-            if (!tasks.push({parent, start_event})) {
+            if (!tasks.bounded_push({parent, start_event})) {
+                explore.push(std::move(*parent));
                 delete parent;
-                tasks_in_flight.fetch_sub(1, std::memory_order_release);
                 break;
             }
-            tasks_sem.post();
+            tasks_in_flight.fetch_add(1, std::memory_order_release);
+            tasks_sem.release();
         }
 
         if (explore.empty() && tasks_in_flight.load(std::memory_order_acquire) == 0) {
@@ -132,7 +136,8 @@ void ParallelTopKMiner::ExploreParallel(TopK& top_k, Explore& explore) const {
                 got_any = true;
                 std::unique_ptr<ParallelEpisode> ep(ep_ptr);
                 if (TryAdd(std::move(*ep), top_k, explore)) {
-                    atomic_minsup.store(top_k.top().GetSupport(), std::memory_order_relaxed);
+                    current_minsup = top_k.top().GetSupport();
+                    atomic_minsup.store(current_minsup, std::memory_order_relaxed);
                 }
             }
             if (got_any) continue;
@@ -140,8 +145,8 @@ void ParallelTopKMiner::ExploreParallel(TopK& top_k, Explore& explore) const {
         }
     }
 
-    terminate_flag.store(true, std::memory_order_relaxed);
-    for (size_t i = 0; i < threads_num_; ++i) tasks_sem.post();
+    terminate_flag.store(true, std::memory_order_release);
+    for (size_t i = 0; i < threads_num_; ++i) tasks_sem.release();
     for (std::thread& t : workers) t.join();
 }
 
@@ -180,11 +185,10 @@ std::vector<ParallelEpisode> ParallelTopKMiner::Mine() {
     }
 
     std::vector<ParallelEpisode> result(top_k.size());
-    int index = top_k.size() - 1;
+    size_t index = result.size();
     while (!top_k.empty()) {
-        result[index] = std::move(const_cast<ParallelEpisode&>(top_k.top()));
+        result[--index] = std::move(const_cast<ParallelEpisode&>(top_k.top()));
         top_k.pop();
-        index--;
     }
     return result;
 }
